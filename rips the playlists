@@ -1,0 +1,82 @@
+import os
+import urllib.request
+import tkinter as tk
+from tkinter import filedialog
+from urllib.parse import unquote
+
+def download_song(url, download_folder):
+    """
+    Download a song from the provided URL and save it to the specified folder.
+    """
+    try:
+        # Get the song filename from the URL
+        filename = os.path.basename(url)
+        file_path = os.path.join(download_folder, filename)
+        
+        # Download and save the song to the file
+        urllib.request.urlretrieve(url, file_path)
+        print(f"Downloaded: {filename}")
+    except Exception as e:
+        print(f"Error downloading {url}: {e}")
+
+def parse_m3u_file(file_path):
+    """
+    Parse an M3U file and return a list of song URLs.
+    """
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:  # Specify encoding to handle charmap issues
+            lines = file.readlines()
+
+        # Extract song URLs (filter out lines that aren't URLs and handle URL decoding)
+        song_urls = [unquote(line.strip()) for line in lines if line.strip() and not line.startswith("#")]
+        return song_urls
+    except Exception as e:
+        print(f"Error reading M3U file {file_path}: {e}")
+        return []
+
+def download_playlist_from_folder(source_folder, download_folder):
+    """
+    Parse the M3U files in the source folder and download all songs to the download folder.
+    """
+    if not os.path.exists(download_folder):
+        os.makedirs(download_folder)
+
+    # Iterate over each M3U file in the source folder
+    for m3u_file in os.listdir(source_folder):
+        m3u_path = os.path.join(source_folder, m3u_file)
+        
+        # Only process files that are .m3u
+        if m3u_file.endswith(".m3u"):
+            print(f"Processing playlist: {m3u_file}")
+            song_urls = parse_m3u_file(m3u_path)
+            
+            # Download each song in the playlist
+            for url in song_urls:
+                download_song(url, download_folder)
+        else:
+            print(f"Skipping non-M3U file: {m3u_file}")
+
+def select_folder(title="Select a Folder"):
+    """
+    Open a folder dialog for the user to select a folder.
+    """
+    root = tk.Tk()
+    root.withdraw()  # Hide the main tkinter window
+    folder = filedialog.askdirectory(title=title)
+    return folder
+
+if __name__ == "__main__":
+    # Ask user to select the folder where M3U playlists are located
+    source_folder = select_folder("Select Folder Containing M3U Playlists")
+    
+    # Ask user to select the folder where music will be saved
+    download_folder = select_folder("Select Folder to Save Downloaded Songs")
+    
+    if source_folder and download_folder:
+        print(f"Selected source folder: {source_folder}")
+        print(f"Selected download folder: {download_folder}")
+        
+        # Download all playlists from the source folder
+        download_playlist_from_folder(source_folder, download_folder)
+    else:
+        print("Folder selection was canceled.")
